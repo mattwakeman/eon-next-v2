@@ -12,7 +12,9 @@ Custom integration for E.ON Next accounts in Home Assistant.
   - `consumptionDataByMpxn` GraphQL fallback when REST data is unavailable.
 - Daily standing charge sensor (inc VAT) for electricity and gas.
 - Previous day total cost sensor (inc VAT) for electricity and gas.
-- Previous day consumption sensor (kWh) with data quality attributes (`entry_count`, `data_complete`), `state_class: total`, and data-driven `last_reset` (`previous_day_consumption_last_reset`) for long-term statistics/Energy Dashboard compatibility.
+- Previous day consumption sensor (kWh) with `state_class: total`, a data-driven `last_reset` set to yesterday's local midnight (`previous_day_consumption_last_reset`), and two data-quality attributes:
+  - `entry_count`: the number of half-hourly slots received for yesterday. A full day produces 48 slots; fewer slots indicate partial data (e.g. smart meter comms gaps) or the daily-granularity fallback path (always 1).
+  - `data_complete`: `true` only when all 48 half-hourly slots for yesterday are present. `false` for the daily fallback path, on DST spring-forward days (only 46 slots exist), or when the smart meter missed readings. The sensor value is still the best available total in all cases.
 - Current unit rate sensor (£/kWh, inc VAT) for electricity and gas — compatible with the Energy Dashboard's "use an entity with current price" option.
 - Current tariff name sensor with agreement metadata (code, type, validity period) and published unit rate.
 - Account balance sensor per account (£), refreshed on coordinator updates.
