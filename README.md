@@ -12,7 +12,7 @@ Custom integration for E.ON Next accounts in Home Assistant.
   - `consumptionDataByMpxn` GraphQL fallback when REST data is unavailable.
 - Daily standing charge sensor (inc VAT) for electricity and gas.
 - Previous day total cost sensor (inc VAT) for electricity and gas.
-- Previous day consumption sensor (kWh) with data quality attributes (`entry_count`, `data_complete`).
+- Previous day consumption sensor (kWh) with data quality attributes (`entry_count`, `data_complete`), `state_class: total`, and data-driven `last_reset` (`previous_day_consumption_last_reset`) for long-term statistics/Energy Dashboard compatibility.
 - Current unit rate sensor (£/kWh, inc VAT) for electricity and gas — compatible with the Energy Dashboard's "use an entity with current price" option.
 - Current tariff name sensor with agreement metadata (code, type, validity period) and published unit rate.
 - Account balance sensor per account (£), refreshed on coordinator updates.
@@ -65,7 +65,11 @@ If credentials expire or your password changes, Home Assistant will prompt for r
 
 ## Upgrade Note
 
-In `1.2.0`, the `Daily Consumption` sensor state class changed to `total` and now provides a data-driven `last_reset` for improved Energy Dashboard compatibility. If your instance still has long-term statistics from older semantics (such as `measurement` or `total_increasing`), you may need to recreate affected statistics/dashboard cards.
+In `1.2.0`, the `Daily Consumption` sensor state class changed to `total` and now provides a data-driven `last_reset` for improved Energy Dashboard compatibility.
+
+The `Previous Day Consumption` sensor now also uses `state_class: total` and exposes a data-driven `last_reset` (`previous_day_consumption_last_reset`) for cleaner long-term statistics behavior.
+
+If your instance still has long-term statistics from prior semantics (such as `measurement` or `total_increasing`) for either sensor, you may need to recreate affected statistics/dashboard cards.
 
 ## Historical Backfill (Configurable)
 
