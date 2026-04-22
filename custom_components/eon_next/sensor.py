@@ -316,9 +316,21 @@ class PreviousDayConsumptionSensor(EonNextSensorBase):
         self._attr_name = f"{meter.serial} Previous Day Consumption"
         self._attr_device_class = SensorDeviceClass.ENERGY
         self._attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
-        self._attr_state_class = SensorStateClass.MEASUREMENT
+        self._attr_state_class = SensorStateClass.TOTAL
         self._attr_icon = "mdi:history"
         self._attr_unique_id = f"{meter.serial}__previous_day_consumption"
+
+    @property
+    def last_reset(self) -> datetime | None:
+        data = self._meter_data
+        if not data:
+            return None
+        raw = data.get("previous_day_consumption_last_reset")
+        if raw:
+            parsed = dt_util.parse_datetime(str(raw))
+            if parsed:
+                return dt_util.as_utc(parsed)
+        return None
 
     @property
     def native_value(self):
