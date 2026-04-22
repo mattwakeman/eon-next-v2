@@ -125,7 +125,7 @@ class EonNextCoordinator(DataUpdateCoordinator):
                             "entry_count"
                         ]
                         meter_data["previous_day_consumption_data_complete"] = (
-                            yesterday["entry_count"] >= 44
+                            yesterday["entry_count"] >= 48
                         )
                         meter_data["previous_day_consumption_last_reset"] = (
                             self._yesterday_midnight_iso()
@@ -405,7 +405,17 @@ class EonNextCoordinator(DataUpdateCoordinator):
 
         Tries half-hourly REST data first (up to 96 half-hour slots,
         approximately two days), then falls back to daily REST data.
+
+        An explicit two-day window (yesterday midnight → tomorrow midnight)
+        is always passed so the API returns the full set of half-hourly slots
+        for yesterday and today, regardless of the endpoint's default date
+        window or result ordering.
         """
+        now = dt_util.now()
+        today_midnight = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        period_from = (today_midnight - timedelta(days=1)).isoformat()
+        period_to = (today_midnight + timedelta(days=1)).isoformat()
+
         # Try half-hourly data first.  Fetch two full days (96 slots) so
         # that yesterday's data is always complete even when today's entries
         # have started arriving, which is needed for the previous-day cost
@@ -417,6 +427,8 @@ class EonNextCoordinator(DataUpdateCoordinator):
                 meter.serial,
                 group_by="half_hour",
                 page_size=96,
+                period_from=period_from,
+                period_to=period_to,
             )
             if result and "results" in result and len(result["results"]) > 0:
                 return result["results"]
@@ -437,6 +449,8 @@ class EonNextCoordinator(DataUpdateCoordinator):
                 meter.serial,
                 group_by="day",
                 page_size=7,
+                period_from=period_from,
+                period_to=period_to,
             )
             if result and "results" in result and len(result["results"]) > 0:
                 return result["results"]
