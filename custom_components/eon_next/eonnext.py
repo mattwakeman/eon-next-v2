@@ -446,7 +446,12 @@ class EonNext:
         period_from: str | None = None,
         period_to: str | None = None,
     ) -> dict | None:
-        """Fetch consumption data from the REST API endpoint."""
+        """Fetch consumption data from the REST API endpoint.
+
+        Follows ``next`` pagination links automatically (capped at 10 pages)
+        so the full result set for the requested window is returned even when
+        the API enforces a lower per-page limit than ``page_size``.
+        """
         if not supply_point_id:
             return None
 
@@ -467,26 +472,64 @@ class EonNext:
         headers = {"Authorization": f"JWT {token}"}
 
         session = await self._get_session()
+        all_results: list[dict] = []
+        next_url: str | None = url
+        next_params: dict[str, str] | None = params
+        _MAX_PAGES = 10
+
         try:
-            async with session.get(url, params=params, headers=headers) as response:
-                if response.status in (401, 403):
-                    raise EonNextAuthError("Authentication rejected by API")
+            for page in range(1, _MAX_PAGES + 1):
+                async with session.get(
+                    next_url, params=next_params, headers=headers
+                ) as response:
+                    if response.status in (401, 403):
+                        raise EonNextAuthError("Authentication rejected by API")
 
-                if response.status == 200:
-                    data = await response.json()
-                    if "results" in data:
-                        return data
-                    return None
+                    if response.status != 200:
+                        _LOGGER.debug(
+                            "REST consumption endpoint returned status %s for %s",
+                            response.status,
+                            serial,
+                        )
+                        break
 
-                _LOGGER.debug(
-                    "REST consumption endpoint returned status %s for %s",
-                    response.status,
-                    serial,
-                )
-                return None
+                    data = await response.json(content_type=None)
+                    if "results" not in data:
+                        break
+
+                    page_results: list[dict] = data["results"]
+                    all_results.extend(page_results)
+                    follow: str | None = data.get("next")
+
+                    _LOGGER.debug(
+                        "REST consumption page %d for %s (%s): %d results "
+                        "(running total: %d, count=%s, has_next=%s)",
+                        page,
+                        serial,
+                        group_by,
+                        len(page_results),
+                        len(all_results),
+                        data.get("count"),
+                        bool(follow),
+                    )
+
+                    if not follow:
+                        break
+
+                    # The next-page URL already encodes all query parameters;
+                    # do not re-send the original params dict.
+                    next_url = follow
+                    next_params = None
+
+        except EonNextAuthError:
+            raise
         except aiohttp.ClientError as err:
             _LOGGER.debug("REST consumption request failed for %s: %s", serial, err)
             return None
+
+        if not all_results:
+            return None
+        return {"results": all_results}
 
     async def async_get_consumption_data_by_mpxn_range(
         self,

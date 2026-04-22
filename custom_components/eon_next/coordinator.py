@@ -412,9 +412,17 @@ class EonNextCoordinator(DataUpdateCoordinator):
         window or result ordering.
         """
         now = dt_util.now()
-        today_midnight = now.replace(hour=0, minute=0, second=0, microsecond=0)
-        period_from = (today_midnight - timedelta(days=1)).isoformat()
-        period_to = (today_midnight + timedelta(days=1)).isoformat()
+        today_midnight_local = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        # Convert local midnight boundaries to UTC so the API receives
+        # a timezone-unambiguous format (e.g. 2026-04-21T23:00:00Z for a
+        # UK BST user) rather than a local offset string (+01:00) that some
+        # API implementations reject or misparse.
+        period_from = dt_util.as_utc(
+            today_midnight_local - timedelta(days=1)
+        ).strftime("%Y-%m-%dT%H:%M:%SZ")
+        period_to = dt_util.as_utc(
+            today_midnight_local + timedelta(days=1)
+        ).strftime("%Y-%m-%dT%H:%M:%SZ")
 
         # Try half-hourly data first.  Fetch two full days (96 slots) so
         # that yesterday's data is always complete even when today's entries
@@ -431,6 +439,11 @@ class EonNextCoordinator(DataUpdateCoordinator):
                 period_to=period_to,
             )
             if result and "results" in result and len(result["results"]) > 0:
+                _LOGGER.debug(
+                    "Half-hourly REST consumption for meter %s: %d slots",
+                    meter.serial,
+                    len(result["results"]),
+                )
                 return result["results"]
         except EonNextAuthError:
             raise
@@ -453,6 +466,11 @@ class EonNextCoordinator(DataUpdateCoordinator):
                 period_to=period_to,
             )
             if result and "results" in result and len(result["results"]) > 0:
+                _LOGGER.debug(
+                    "Daily REST consumption for meter %s: %d entries",
+                    meter.serial,
+                    len(result["results"]),
+                )
                 return result["results"]
         except EonNextAuthError:
             raise
