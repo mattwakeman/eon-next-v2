@@ -42,7 +42,8 @@ This project is a fork of [madmachinations/eon-next-v2](https://github.com/madma
 
 ### Bug Fixes
 
-* **coordinator:** fix `PreviousDayConsumptionSensor` showing a single half-hourly slot (e.g. 0.183 kWh) instead of a full-day total — consumption REST calls now use an explicit two-day date window (`period_from`/`period_to`) so all 48 half-hourly slots for yesterday are always fetched regardless of the API's default date range or result ordering
+* **coordinator:** fix `PreviousDayConsumptionSensor` showing a single half-hourly slot (e.g. 0.183 kWh) instead of a full-day total — consumption REST calls now use an explicit two-day date window emitted in UTC (`period_from`/`period_to` as `YYYY-MM-DDTHH:MM:SSZ`) so all 48 half-hourly slots for yesterday are always fetched regardless of the API's default date range, result ordering, or local-timezone offset handling
+* **eonnext:** add automatic pagination in `async_get_consumption` — the function now follows `next` links (up to 10 pages) so the full result set is returned even when the API enforces a per-page limit below the requested `page_size`
 * **coordinator:** raise `data_complete` threshold from 44 to 48 half-hourly slots so the attribute only reads `true` when a genuinely full day of readings is present
 * **coordinator:** derive unit rate, standing charge, and previous-day cost from tariff agreement data when the defunct daily-costs endpoint returns nothing
 * **frontend:** remove build-time version stamp that drifted from release-please managed version — the backend version badge is now the single source of truth
